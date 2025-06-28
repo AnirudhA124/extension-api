@@ -355,7 +355,7 @@ Focus on creating clean, modular code that follows Python best practices.
         print("❌ Error:", e)
         return jsonify({"error": f"Failed to generate notebook: {str(e)}"}), 500
 
-@app.route("/health", methods=["GET"])
+@app.route("/", methods=["GET"])
 def health_check():
     return jsonify({"status": "healthy", "message": "Flask server is running"})
 
