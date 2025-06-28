@@ -10,14 +10,16 @@ CORS(app)
 genai.configure(api_key="AIzaSyCSrh2w4-Nt11jh1QQUc_wQG7kt_WI_xtM")
 model = genai.GenerativeModel("models/gemini-1.5-flash")
 
-def extract_imports(code: str):
-    """Extract import statements from code"""
-    matches = re.findall(r'^\s*(?:import|from)\s+([a-zA-Z0-9_\.]+)', code, re.MULTILINE)
-    cleaned = list(set(matches))
-    return cleaned
-
 def parse_code_structure(code: str):
     """Parse code into logical sections: imports, functions, classes, and main execution"""
+    if not code:
+        return {
+            'imports': '',
+            'functions': [],
+            'classes': [],
+            'main_code': []
+        }
+    
     lines = code.split('\n')
     
     imports = []
@@ -189,7 +191,7 @@ def create_file_structure(files_info, base_code):
     """Create multiple files based on LLM suggested structure"""
     files = []
     
-    if isinstance(files_info, list):
+    if isinstance(files_info, list) and files_info:
         for file_info in files_info:
             if isinstance(file_info, dict) and 'path' in file_info:
                 file_path = file_info['path']
@@ -279,7 +281,7 @@ def receive_data():
         requirement = data.get("requirement", "")
         print("📥 Received Requirement:", requirement)
 
-        # Enhanced prompt for better structure and file organization
+        # Enhanced prompt asking LLM to provide dependencies
         gemini_prompt = f"""
 You are a Python code generator that creates well-structured projects. 
 
@@ -297,8 +299,15 @@ Please provide your response in the following JSON format:
             "content": "# Utility functions here"
         }}
     ],
-    "main_code": "# Complete implementation code here"
+    "main_code": "# Complete implementation code here",
+    "dependencies": ["numpy", "pandas", "matplotlib", "requests"]
 }}
+
+IMPORTANT: 
+- Include ALL required dependencies in the "dependencies" array
+- List only the main package names (e.g., "sklearn" not "scikit-learn")
+- Include both standard libraries you use (if they need installation) and third-party packages
+- Don't include built-in Python modules like "os", "sys", "json", "re"
 
 Guidelines:
 1. Organize code into logical files (main notebook, utility modules, etc.)
@@ -308,6 +317,7 @@ Guidelines:
 5. Structure the project for maintainability
 6. The main_code should contain the complete implementation
 7. If creating multiple files, organize them logically (utils.py for utilities, models.py for ML models, etc.)
+8. Always provide the dependencies list - this is crucial!
 
 Focus on creating clean, modular code that follows Python best practices.
 """
@@ -315,6 +325,11 @@ Focus on creating clean, modular code that follows Python best practices.
         response = model.generate_content(gemini_prompt)
         response_text = response.text.strip()
         print("🧠 Gemini Raw Response:\n", response_text)
+
+        # Initialize defaults
+        files_info = []
+        main_code = ""
+        dependencies = []
 
         # Try to parse JSON response
         try:
@@ -327,17 +342,23 @@ Focus on creating clean, modular code that follows Python best practices.
                 response_json = json.loads(response_text)
             
             files_info = response_json.get('files', [])
-            main_code = response_json.get('main_code', response_text)
+            main_code = response_json.get('main_code', '')
+            dependencies = response_json.get('dependencies', [])
             
-        except (json.JSONDecodeError, AttributeError):
+            print("✅ Successfully parsed JSON response")
+            print(f"📦 LLM provided dependencies: {dependencies}")
+            
+        except (json.JSONDecodeError, AttributeError) as e:
             # Fallback: treat entire response as code
-            print("⚠️ Could not parse JSON, treating as raw code")
+            print(f"⚠️ Could not parse JSON: {e}")
+            print("⚠️ Treating as raw code")
             main_code = re.sub(r"^```(?:python)?|```$", "", response_text.strip(), flags=re.MULTILINE).strip()
             files_info = []
+            dependencies = []  # Empty list as fallback
 
-        # Extract dependencies from main code
-        dependencies = extract_imports(main_code)
-        print("📦 Detected dependencies:", dependencies)
+        # Ensure we have some code to work with
+        if not main_code and not files_info:
+            main_code = response_text
 
         # Create file structure
         files = create_file_structure(files_info, main_code)
@@ -345,6 +366,10 @@ Focus on creating clean, modular code that follows Python best practices.
         print("📁 Generated files:")
         for file in files:
             print(f"  - {file['path']}")
+
+        # Ensure dependencies is always a list
+        if not isinstance(dependencies, list):
+            dependencies = []
 
         return jsonify({
             "files": files,
