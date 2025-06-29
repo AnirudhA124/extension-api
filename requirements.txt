@@ -6,3 +6,7 @@ google-generativeai
 pydantic
 python-dotenv
 gunicorn
+pydantic[email]
+email-validator
+python-multipart
+smtplib3 
