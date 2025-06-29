@@ -2,13 +2,16 @@ import re
 import json
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel,EmailStr
 from typing import List, Optional, Dict, Any
 import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import google.auth.exceptions
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = FastAPI()
 
@@ -45,8 +48,55 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-class RequirementRequest(BaseModel):
-    requirement: str
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+@app.post("/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest):
+    email = data.email.strip()
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required.")
+
+    try:
+        # ✅ Generate reset link
+        reset_link = auth.generate_password_reset_link(email)
+        print("🔗 Generated reset link:", reset_link)
+
+        # ✅ Send email using SMTP (e.g., Gmail)
+        sender_email = "agrawalanirudh18@gmail.com"
+        sender_password = "uien meff nohq lwls"  # Use App Password (NOT your main Gmail password)
+        subject = "Reset your password"
+
+        message = MIMEMultipart()
+        message["From"] = sender_email
+        message["To"] = email
+        message["Subject"] = subject
+
+        html_content = f"""
+        <html>
+          <body>
+            <p>Hi,<br>
+               Click the link below to reset your password:<br>
+               <a href="{reset_link}">Reset Password</a>
+            </p>
+          </body>
+        </html>
+        """
+
+        message.attach(MIMEText(html_content, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, email, message.as_string())
+
+        return {"success": True, "message": "Password reset email sent."}
+
+    except auth.UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found.")
+    except Exception as e:
+        print("Password reset error:", str(e))
+        raise HTTPException(status_code=500, detail="Error sending reset email.")
 
 @app.post("/signup")
 async def signup(data: SignupRequest):
