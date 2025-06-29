@@ -8,6 +8,8 @@ import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import google.auth.exceptions
+import os
+from dotenv import getenv
 
 app = FastAPI()
 
@@ -21,19 +23,19 @@ app.add_middleware(
 )
 # Initialize Firebase
 if not firebase_admin._apps:
-    firebase_config={
-  "type": "service_account",
-  "project_id": "vstodo-7888a",
-  "private_key_id": "7ddc2c50070da2b480c75ca8acc8ed243e38ff1d",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDWLovkJuQ3hJak\ntOnAx41Fwjm4rWzFaLG6Eqd2Z3ZbioQH5H/Pgci7pBgjIJv6fj3wwUARhqW2WhQA\nxKDBx0dbhLQvzPRXtiFRCh1O7Jj6PFZ/IdhCNSYRotmYDzx5sjv/cfCAu3CyI96k\nmx+eYkDPhSDfMjoJ9f6YJbfAgo0VX73ldaibkLqi6uTCoXcq+122eB1pw5Mw1BN+\nIN09ExXmgCvO9Ogw/I0Zn6Z2UybGkwsCfbHq3qsJc7O17duJuyqFc1uwx3fcVuVu\nb3iTCnTgw3tpjTpgS50G8Z08MiNCW56oN+umvHVyI6wfFWhO0lg1TSEZsqUTy5p1\nkeQ2oCfXAgMBAAECggEAII3cRcDNi6II/Z7hL/kvaqzIoN58kQ1xL2Lky4qSmFEC\nRsAp1wyXH0Ij8w7ioQfC0A78zHfRRIQGKfm4+iBueFAVd8sopmjwlm85oNngWe8w\nMcxJ9leQDOUvj+eySEhZdeGdGGFPvJvWxuEsb009eZf2tPC0QU2qX/jM/aM6Nhxb\nFzONOWODRrUlTGhOf8mNHTj9nzVO6QDtCpF9DE/tyLjNg8s//SxQvLL3PTWHtrnK\nXkDcVw0wJxowmedxbsAY7jC2DCZhKqS41Gf/Lfeye+Pxwco9iPjwKr7xLliVx/fu\n+pqVKpatnOQG9Jvs4c6RDec7tk/3fFXu7yMRq392QQKBgQD7EYiKP/asC0HTMtRB\nvcd+qdv7Om0mi7hUavsi4aEcz5pQAtVQlXhmcP8s8RykavqmRtvsMGh4VWARwP66\nVjRUKf9gUmZkZoopG7eGY/XPO3uGzDaU0ROm0KTw+lnmJ0MeUS2XWwqIsbK/niHD\nvKetJaVvKNYHhUcoGAEY0S8flwKBgQDaY4h3nEg3TcaHa23sv9j8iXpup2IWzLLo\nPMnyWod36gG08Oj/ojl/6wNGXnWTABqYRuxZzecjn37FFxwCkQEysHFkmZ5+o/1L\nzUORCiG88cy/NFMqI6YDZ3tZkbrefrPe7nL7AYIKeMYLqC1OC+8Dk4n++Y+TsWyP\nduSGcAxBwQKBgQC/f1EYuc7ozLFJaLSS7DC0gNSEG71TMDDJWsvwgA5GDmbR7kdL\n7qXl5PwNCF7jXaGOn+9wiD+2wM/E2uKvt760D1B05ISqwbdRwY1K2QWNKf5/A1YC\nTjJiAzQ7hYh6TqoX/qz6i/tN5dPD6dYxGL0ACP3U+l29YL+0ahK0HiGGQwKBgCpj\n4YxeEIJznVKR3r9yqbqzMMmjwd1tFFkR250oR11WVch6bq+YHJMg2fzhvu6uuXrP\nYXc5CWGXxvKYvr4cyV++cfQ2AVbRnAwHptLTZaMYSEbg8DegvcuxXXcQW3Zun5lp\nLXZdX5GKyd5fYZPhqx5FmCae6GihqtHaIRebTjXBAoGBAIVqYyeZyjDyPiPQqhhM\nNkRLbtCj6DRevNbqRbXLOUGrdolpmXZ3SmNZmOexjk7y+u+PGdItFBuooadWWnAn\ndxZ/3uuWxwYW3Eo5Xvr9L8EtOJuTMhBBkLyRO/RxaV8XW117doCVb1SvHY8HAXJF\nJd8XOAX+BNUjnP4LL0yWnX52\n-----END PRIVATE KEY-----\n",
-  "client_email": "firebase-adminsdk-fbsvc@vstodo-7888a.iam.gserviceaccount.com",
-  "client_id": "111411034294459778399",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40vstodo-7888a.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}
+    firebase_config = {
+        "type": "service_account",
+        "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+        "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+        "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace('\\n', '\n'),  # ✅ FIX NEWLINES
+        "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+        "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_CERT_URL"),
+        "universe_domain": "googleapis.com"
+    }
 
     cred = credentials.Certificate(firebase_config)
     firebase_admin.initialize_app(cred)
