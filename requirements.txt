@@ -9,4 +9,3 @@ gunicorn
 pydantic[email]
 email-validator
 python-multipart
-smtplib3 
