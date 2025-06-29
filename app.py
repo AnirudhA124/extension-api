@@ -9,7 +9,8 @@ import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import google.auth.exceptions
 import os
-from dotenv import getenv
+from dotenv import load_dotenv
+load_dotenv() 
 
 app = FastAPI()
 
