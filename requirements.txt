@@ -1,4 +1,7 @@
-Flask
-flask-cors
+fastapi
+uvicorn
+firebase-admin
+google-auth
 google-generativeai
+pydantic
 gunicorn
