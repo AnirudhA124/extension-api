@@ -4,4 +4,5 @@ firebase-admin
 google-auth
 google-generativeai
 pydantic
+python-dotenv
 gunicorn
