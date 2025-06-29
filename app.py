@@ -8,6 +8,7 @@ import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
 import google.auth.exceptions
+import os
 
 app = FastAPI()
 
