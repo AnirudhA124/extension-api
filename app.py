@@ -48,6 +48,11 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+class RequirementRequest(BaseModel):
+    requirement: str
+
+# Your existing Firebase setup assumed...
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
