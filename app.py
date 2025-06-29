@@ -21,7 +21,9 @@ app.add_middleware(
 )
 # Initialize Firebase
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase.json")
+    firebase_config = os.getenv("FIREBASE_CONFIG")
+    cred_dict = json.loads(firebase_config)
+    cred = credentials.Certificate(cred_dict)
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
