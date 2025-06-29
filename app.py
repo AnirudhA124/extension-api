@@ -33,7 +33,7 @@ db = firestore.client()
 
 # Gemini config
 genai.configure(api_key="AIzaSyCSrh2w4-Nt11jh1QQUc_wQG7kt_WI_xtM")
-model = genai.GenerativeModel("models/gemini-1.5-flash")
+model = genai.GenerativeModel("models/gemini-2.5-flash")
 
 
 class RequirementRequest(BaseModel):
