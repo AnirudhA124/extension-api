@@ -472,8 +472,63 @@ def create_notebook_cells(code_structure, file_structure):
 
     return cells
 
+def generate_filename_from_requirement(requirement):
+    """Generate a descriptive filename based on user requirement"""
+    # Clean and normalize the requirement text
+    filename = requirement.lower().strip()
+    
+    # Remove common words and focus on key terms
+    stop_words = ['create', 'make', 'generate', 'build', 'write', 'code', 'for', 'a', 'an', 'the', 'to', 'and', 'or', 'with', 'using', 'in', 'on', 'of', 'that', 'this', 'is', 'are', 'can', 'will', 'should', 'please', 'help', 'me', 'python', 'script', 'program']
+    
+    # Split into words and filter
+    words = re.findall(r'\b[a-zA-Z]+\b', filename)
+    meaningful_words = [word for word in words if word not in stop_words and len(word) > 2]
+    
+    # Take first 3-4 most meaningful words
+    key_words = meaningful_words[:4] if len(meaningful_words) >= 4 else meaningful_words[:3]
+    
+    # If we don't have enough meaningful words, extract key technical terms
+    if len(key_words) < 2:
+        technical_terms = re.findall(r'\b(?:data|analysis|visualization|machine|learning|neural|network|api|web|scraping|algorithm|sort|search|prime|fibonacci|calculator|game|quiz|chatbot|automation|database|file|image|processing|graph|chart|plot|regression|classification|clustering|nlp|ai|ml|deep|statistics|math|finance|crypto|blockchain|gui|tkinter|flask|django|pandas|numpy|matplotlib|seaborn|opencv|tensorflow|pytorch|scikit|requests|beautifulsoup)\b', requirement.lower())
+        key_words.extend(technical_terms[:3])
+    
+    # Fallback: if still no good words, use generic terms based on common patterns
+    if len(key_words) < 2:
+        if any(word in requirement.lower() for word in ['prime', 'number']):
+            key_words = ['prime', 'numbers']
+        elif any(word in requirement.lower() for word in ['sort', 'algorithm']):
+            key_words = ['sorting', 'algorithm']
+        elif any(word in requirement.lower() for word in ['calculator', 'calc']):
+            key_words = ['calculator']
+        elif any(word in requirement.lower() for word in ['game', 'play']):
+            key_words = ['game']
+        elif any(word in requirement.lower() for word in ['data', 'analysis']):
+            key_words = ['data', 'analysis']
+        elif any(word in requirement.lower() for word in ['plot', 'graph', 'chart']):
+            key_words = ['visualization']
+        else:
+            key_words = ['python', 'project']
+    
+    # Create filename
+    if key_words:
+        base_filename = '_'.join(key_words[:3])  # Max 3 words
+    else:
+        base_filename = f"python_project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # Clean filename - remove any invalid characters
+    base_filename = re.sub(r'[^a-zA-Z0-9_]', '', base_filename)
+    
+    # Ensure it's not too long
+    if len(base_filename) > 30:
+        base_filename = base_filename[:30]
+    
+    # Add timestamp to ensure uniqueness
+    unique_filename = f"{base_filename}.ipynb"
+    
+    return unique_filename
 
-def create_file_structure(files_info, base_code):
+
+def create_file_structure(files_info, base_code, requirement=""):
     files = []
 
     def make_notebook(content):
@@ -510,8 +565,10 @@ def create_file_structure(files_info, base_code):
             else:
                 files.append({"path": path, "content": content})
     else:
+        # Generate unique filename based on requirement
+        filename = generate_filename_from_requirement(requirement) if requirement else f"notebook_{datetime.now().strftime('%Y%m%d_%H%M%S')}.ipynb"
         notebook = make_notebook(base_code)
-        files.append({"path": "main.ipynb", "content": json.dumps(notebook, indent=2)})
+        files.append({"path": filename, "content": json.dumps(notebook, indent=2)})
 
     return files
 
@@ -533,78 +590,139 @@ You are Octavian, an AI coding assistant that generates Python code for Jupyter 
 
 User Requirement: """ + requirement + """
 
-Generate well-structured Python code that will be converted into a Jupyter notebook. Follow these guidelines:
+IMPORTANT: You must respond with a JSON object in this exact format:
 
-1. *Code Structure*: Write complete, executable Python code with clear separation:
+{
+  "code": "your_python_code_here",
+  "dependencies": ["package1", "package2", "package3"]
+}
+
+Guidelines for code generation:
+
+1. Code Structure: Write complete, executable Python code with clear separation:
    - Import statements at the top
    - Function definitions (each function separate)
    - Main execution code broken into logical steps
    - Each major task should be separable for debugging
 
-2. *For Data Science/Analysis Tasks*: Structure the code in distinct logical blocks:
+2. For Data Science/Analysis Tasks: Structure the code in distinct logical blocks:
    - Data generation/simulation
    - Data processing/analysis  
    - Visualization/plotting
    - Each block should be completely separate with clear comments
 
-3. *Separation Guidelines*: 
-   - Put function definitions separate from their usage
-   - Separate data generation from analysis
-   - Separate analysis from visualization  
-   - Use clear comments to indicate what each block does
-   - Add blank lines between different logical sections
+3. Dependencies Array: In the dependencies array, list ALL pip packages needed to run your code:
+   - Only include packages that need to be installed via pip
+   - Don't include built-in Python modules (os, sys, json, re, time, etc.)
+   - Use the correct pip package names (e.g., "scikit-learn" not "sklearn", "beautifulsoup4" not "bs4")
+   - Examples: ["numpy", "pandas", "matplotlib", "seaborn", "requests", "scikit-learn", "tensorflow", "opencv-python", "pillow"]
 
-4. *Output Format*: Respond with clean Python code only.
-   Make sure the code is:
+4. Code Quality:
    - Executable and complete
    - Well-commented with section headers
    - Properly separated into logical blocks
-   - Uses appropriate libraries
+   - Uses appropriate libraries with proper imports
 
-Generate the Python code now with clear logical separation:
+Respond with ONLY the JSON object, no other text or formatting:
 """
 
         response = model.generate_content(gemini_prompt)
         response_text = response.text.strip()
         print("🧠 Gemini Raw Response:\n", response_text)
 
-        # Try parsing JSON
+        # Clean markdown code blocks
+        def clean_code_blocks(text):
+            """Remove markdown code block markers and clean the code"""
+            # Remove code block markers
+            text = re.sub(r'^(?:python|py|json)?\s*\n?', '', text, flags=re.MULTILINE)
+            text = re.sub(r'\n?\s*$', '', text, flags=re.MULTILINE)
+            # Remove any remaining triple backticks
+            text = text.replace('', '')
+            # Clean up extra whitespace
+            text = text.strip()
+            return text
+
+        # Clean the response first
+        cleaned_response = clean_code_blocks(response_text)
+        print("🧹 Cleaned Response:\n", cleaned_response)
+
+        # Parse JSON response from LLM
+        main_code = ""
+        files_info = []
+        dependencies = []
+        
         try:
-            match = re.search(r'(?:json)?\s*(\{.*?\})\s*', response_text, re.DOTALL)
-            if match:
-                data_json = json.loads(match.group(1))
-            else:
-                cleaned = re.sub(r"^(?:json)?|$", "", response_text.strip(), flags=re.MULTILINE).strip()
-                data_json = json.loads(cleaned)
-
-            files_info = data_json.get("files", [])
-            main_code = data_json.get("main_code", "")
+            # Try to parse as JSON first (preferred format)
+            data_json = json.loads(cleaned_response)
+            main_code = data_json.get("code", "")
             dependencies = data_json.get("dependencies", [])
+            files_info = data_json.get("files", [])  # In case LLM provides file structure
+            
+            print("✅ Successfully parsed JSON response")
+            print("📦 LLM provided dependencies:", dependencies)
+            
+        except json.JSONDecodeError as e:
+            print("⚠ JSON parse failed, trying to extract JSON from text:", e)
+            
+            # Try to find JSON object within the text
+            json_match = re.search(r'\{[^{}]*"code"[^{}]*"dependencies"[^{}]*\}', cleaned_response, re.DOTALL)
+            if json_match:
+                try:
+                    data_json = json.loads(json_match.group(0))
+                    main_code = data_json.get("code", "")
+                    dependencies = data_json.get("dependencies", [])
+                    print("✅ Extracted JSON from text")
+                    print("📦 LLM provided dependencies:", dependencies)
+                except:
+                    # Final fallback - treat as plain code
+                    print("⚠ All JSON parsing failed, treating as plain code")
+                    main_code = cleaned_response
+                    dependencies = []
+            else:
+                # No JSON found, treat as plain code
+                print("⚠ No JSON structure found, treating as plain code")
+                main_code = cleaned_response
+                dependencies = []
 
-        except (json.JSONDecodeError, AttributeError) as e:
-            print("⚠ JSON parse failed:", e)
-            # fallback to treating the entire response as raw code
-            main_code = re.sub(r"^(?:python)?|$", "", response_text.strip(), flags=re.MULTILINE).strip()
-            files_info = []
-            dependencies = []
+        # Ensure we have some code
+        if not main_code.strip():
+            raise ValueError("No valid code generated")
 
-        # Final fallback if Gemini returned just plain code
-        if not main_code and not files_info:
-            main_code = response_text
+        print("🔧 Final main_code length:", len(main_code))
+        print("📦 Final dependencies:", dependencies)
 
-        files = create_file_structure(files_info, main_code)
+        files = create_file_structure(files_info, main_code, requirement)  # Add requirement parameter
         print("📁 Generated files:", [f["path"] for f in files])
 
-        # Also return the raw code for easier access
         return {
             "files": files, 
             "dependencies": dependencies,
-            "raw_code": main_code  # Add this for direct code access
+            "raw_code": main_code
         }
 
+    
     except Exception as e:
         print("❌ Error:", e)
         return {"error": f"Failed to generate notebook: {str(e)}"}
+
+
+# Helper function for extracting Python code from markdown
+def extract_python_code(text):
+    """Extract Python code from various formats including markdown code blocks"""
+    # Method 1: Remove markdown code blocks
+    if '' in text:
+        # Find all code blocks
+        code_blocks = re.findall(r'(?:python|py)?\s*\n?(.*?)\n?', text, re.DOTALL)
+        if code_blocks:
+            # Join all code blocks
+            return '\n\n'.join(block.strip() for block in code_blocks)
+    
+    # Method 2: If no code blocks found, clean the entire text
+    text = re.sub(r'^(?:python|py)?\s*\n?', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\n?\s*$', '', text, flags=re.MULTILINE)
+    text = text.replace('```', '')
+    
+    return text.strip()
 
 if __name__ == "__main__":
     import uvicorn
