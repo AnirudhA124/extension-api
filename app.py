@@ -273,6 +273,127 @@ def post_process_blocks(blocks):
             refined_blocks.append(block)
     
     return [b for b in refined_blocks if b.strip()]
+def split_main_code_blocks(main_code_text):
+    """Split main code into smaller logical blocks for better notebook structure"""
+    if not main_code_text.strip():
+        return []
+    
+    lines = main_code_text.split('\n')
+    blocks = []
+    current_block = []
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip().lower()
+        
+        # Skip empty lines at the beginning of a potential new block
+        if not stripped and not current_block:
+            i += 1
+            continue
+            
+        # Check if this line should start a new block
+        should_start_new_block = False
+        
+        # Start new block for comments that indicate sections
+        if stripped.startswith('#') and any(keyword in stripped for keyword in 
+                                          ['data generation', 'data processing', 'analysis', 
+                                           'visualization', 'plotting', 'example', 'usage',
+                                           'generate', 'process', 'analyze', 'plot', 'calculate']):
+            should_start_new_block = True
+        
+        # Start new block for variable assignments that look like main tasks
+        elif any(pattern in line for pattern in ['=', 'primes_less_than', 'num_to_check', 'N =', 'results =', 'data =']):
+            # Check if this is a significant assignment (not just a loop variable)
+            if not any(skip_pattern in stripped for skip_pattern in ['for ', 'while ', 'if ', 'elif ', 'else:']):
+                should_start_new_block = True
+        
+        # Start new block for function calls that are standalone operations
+        elif re.match(r'^\s*\w+\s*\(', line) and not any(skip in stripped for skip in ['print', 'return', 'if', 'for', 'while']):
+            should_start_new_block = True
+            
+        # Start new block for print statements (often separate display tasks)
+        elif 'print(' in line and current_block:
+            should_start_new_block = True
+            
+        # Start new block for plotting commands
+        elif any(plot_cmd in line for plot_cmd in ['plt.', 'sns.', 'fig', 'ax.', 'plot(']):
+            should_start_new_block = True
+            
+        # Start new block for conditional statements that seem like separate examples
+        elif stripped.startswith('if ') and any(keyword in stripped for keyword in ['is_prime', 'check', 'test']):
+            should_start_new_block = True
+        
+        # If we should start a new block and we have content in current block
+        if should_start_new_block and current_block:
+            block_text = '\n'.join(current_block).strip()
+            if block_text:
+                blocks.append(block_text)
+            current_block = []
+        
+        current_block.append(line)
+        i += 1
+    
+    # Add the final block
+    if current_block:
+        block_text = '\n'.join(current_block).strip()
+        if block_text:
+            blocks.append(block_text)
+    
+    # Post-process blocks to ensure better separation
+    return post_process_blocks(blocks)
+
+def post_process_blocks(blocks):
+    """Further refine blocks to ensure each task is truly separate"""
+    refined_blocks = []
+    
+    for block in blocks:
+        # Check if this block contains multiple distinct tasks
+        lines = block.split('\n')
+        sub_blocks = []
+        current_sub_block = []
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Split on significant transitions
+            if (stripped.startswith('#') and 
+                any(keyword in stripped.lower() for keyword in ['example', 'usage', 'test', 'check']) and
+                current_sub_block):
+                
+                # Save current sub-block
+                sub_block_text = '\n'.join(current_sub_block).strip()
+                if sub_block_text:
+                    sub_blocks.append(sub_block_text)
+                current_sub_block = [line]
+                
+            elif (stripped.startswith('if ') and 
+                  'is_prime' in stripped and 
+                  current_sub_block and
+                  not any('if ' in cb_line for cb_line in current_sub_block)):
+                
+                # This looks like a separate example/test
+                sub_block_text = '\n'.join(current_sub_block).strip()
+                if sub_block_text:
+                    sub_blocks.append(sub_block_text)
+                current_sub_block = [line]
+                
+            else:
+                current_sub_block.append(line)
+        
+        # Add the final sub-block
+        if current_sub_block:
+            sub_block_text = '\n'.join(current_sub_block).strip()
+            if sub_block_text:
+                sub_blocks.append(sub_block_text)
+        
+        # Add sub-blocks or original block if no splitting occurred
+        if len(sub_blocks) > 1:
+            refined_blocks.extend(sub_blocks)
+        else:
+            refined_blocks.append(block)
+    
+    return [b for b in refined_blocks if b.strip()]
 
 def split_single_block_aggressively(code_block):
     """More aggressive splitting for cases where logical separation is needed"""
