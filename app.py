@@ -755,14 +755,10 @@ Respond with ONLY the JSON object, no other text or formatting:
         # Clean markdown code blocks
         def clean_code_blocks(text):
             """Remove markdown code block markers and clean the code"""
-            # Remove code block markers
-            text = re.sub(r'^(?:python|py|json)?\s*\n?', '', text, flags=re.MULTILINE)
-            text = re.sub(r'\n?\s*$', '', text, flags=re.MULTILINE)
-            # Remove any remaining triple backticks
-            text = text.replace('', '')
-            # Clean up extra whitespace
-            text = text.strip()
-            return text
+            # Remove triple backticks and optional language (e.g., ```python)
+            text = re.sub(r'^```(?:python|json)?\n', '', text.strip())
+            text = re.sub(r'\n```$', '', text)
+            return text.strip()
 
         # Clean the response first
         cleaned_response = clean_code_blocks(response_text)
@@ -830,20 +826,10 @@ Respond with ONLY the JSON object, no other text or formatting:
 
 # Helper function for extracting Python code from markdown
 def extract_python_code(text):
-    """Extract Python code from various formats including markdown code blocks"""
-    # Method 1: Remove markdown code blocks
-    if '' in text:
-        # Find all code blocks
-        code_blocks = re.findall(r'(?:python|py)?\s*\n?(.*?)\n?', text, re.DOTALL)
-        if code_blocks:
-            # Join all code blocks
-            return '\n\n'.join(block.strip() for block in code_blocks)
-    
-    # Method 2: If no code blocks found, clean the entire text
-    text = re.sub(r'^(?:python|py)?\s*\n?', '', text, flags=re.MULTILINE)
-    text = re.sub(r'\n?\s*$', '', text, flags=re.MULTILINE)
-    text = text.replace('```', '')
-    
+    """Extract Python code from markdown or plain responses"""
+    # Remove any ```python or ``` markers
+    text = re.sub(r'```(?:python|json)?', '', text)
+    text = re.sub(r'```', '', text)
     return text.strip()
 
 if __name__ == "__main__":
