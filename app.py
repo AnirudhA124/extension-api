@@ -812,6 +812,11 @@ Respond with ONLY the JSON object, no other text or formatting:
         files = create_file_structure(files_info, main_code, requirement)  # Add requirement parameter
         print("📁 Generated files:", [f["path"] for f in files])
 
+        print("Sort:",{
+            "files": files, 
+            "dependencies": dependencies,
+            "raw_code": main_code
+        })
         return {
             "files": files, 
             "dependencies": dependencies,
